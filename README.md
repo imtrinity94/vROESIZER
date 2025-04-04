@@ -3,6 +3,9 @@
 
 A Chrome Plugin to maximize the code editor area in Aria Automation Orchestrator (vRO) for developer friendliness.
 
+![Demo gif](https://github.com/user-attachments/assets/2845aeea-cc01-4031-b3b6-7d7b135d9b41)
+
+
 This extension is under review on Chrome Extension Store. (ID: gbgologffcmhapnjimcpipiljeaadgpf)
 
 ## Demo
