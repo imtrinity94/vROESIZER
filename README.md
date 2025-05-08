@@ -1,4 +1,4 @@
-# **vRO**ESIZER - vRO Code Editor Resizer Chrome Extension
+# vRŒSIZER - vRO Code Editor Resizer Chrome Extension
 ![icon](https://github.com/user-attachments/assets/6869f886-90ca-474d-aeb3-3206f7b5ff32)
 
 A Chrome Plugin to maximize the code editor area in Aria Automation Orchestrator (vRO) for developer friendliness.
