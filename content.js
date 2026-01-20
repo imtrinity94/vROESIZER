@@ -4,6 +4,31 @@ window.addEventListener("load", function () {
     let lastEditor = null;
     let observer = null;
 
+    // Function to detect vRO version
+    function detectVROVersion() {
+        if (document.querySelector('split-layout.horizontal')) {
+            return 'vcf9';
+        }
+        return 'legacy'; // Default to legacy (7.x/8.x)
+    }
+
+    // Function to find the editor in the DOM
+    function findEditor() {
+        // VCF 9+ structure
+        const vcf9Editor = document.querySelector('.monaco-editor');
+        if (vcf9Editor && document.querySelector('split-layout.horizontal')) {
+            return { editor: vcf9Editor, version: 'vcf9' };
+        }
+
+        // Legacy structure (and Action views)
+        const legacyEditor = document.querySelector('.monaco-editor');
+        if (legacyEditor) {
+            return { editor: legacyEditor, version: 'legacy' };
+        }
+
+        return { editor: null, version: null };
+    }
+
     // Function to check for editor changes
     function checkEditorState() {
         const { editor, version } = findEditor();
