@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "vRO Code Editor Resizer",
-  "version": "1.0",
+  "version": "2.0.0",
   "description": "Adds a button to resize the vRO (vRealize Orchestrator) code editor for better visibility.",
   "permissions": ["activeTab"],
   "host_permissions": ["*://*/*"],

@@ -14,7 +14,15 @@ https://github.com/user-attachments/assets/c86cf157-8974-4e4f-b1fa-da9b302534db
 
 ![icon](https://github.com/user-attachments/assets/6869f886-90ca-474d-aeb3-3206f7b5ff32) https://chromewebstore.google.com/detail/vro-code-editor-resizer/gbgologffcmhapnjimcpipiljeaadgpf
 
-## 🛠️ How to Test Locally in Chrome
+## � What's New in v2.0.0
+- **New UI**: Updated button design to match Clarity Design System (Metropolis font, standard colors).
+- **Smart Restore**: Now restores the exact pixel dimensions of your editor and sidebars, preventing layout collapse.
+- **Draggable & Persistent**: Move the button anywhere! It remembers its position even after you close the page.
+- **Window Awareness**: The button automatically repositions itself if you resize the window so it never gets lost off-screen.
+- **Bug Fixes**: Resolved issues with button visibility and state continuity during navigation.
+
+
+## �🛠️ How to Test Locally in Chrome
 
 Since the extension is currently under review or if you want to test the latest changes locally, follow these steps:
 
