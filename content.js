@@ -357,6 +357,66 @@ window.addEventListener("load", function () {
     function makeDraggable(element) {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
 
+        // Restore position from localStorage if available
+        const savedPos = localStorage.getItem('vro-resizer-btn-pos');
+        if (savedPos) {
+            try {
+                const pos = JSON.parse(savedPos);
+                // Ensure the saved position is within valid bounds (simple check)
+                if (pos.top >= 0 && pos.left >= 0 &&
+                    pos.top < window.innerHeight && pos.left < window.innerWidth) {
+
+                    element.style.top = pos.top + "px";
+                    element.style.left = pos.left + "px";
+                    element.style.bottom = 'auto';
+                    element.style.right = 'auto';
+                    element.style.position = 'fixed';
+                }
+            } catch (e) {
+                console.error("Error parsing saved button position", e);
+            }
+        }
+
+        // Add window resize listener to ensure button stays visible
+        window.addEventListener('resize', function () {
+            const rect = element.getBoundingClientRect();
+            let newTop = rect.top;
+            let newLeft = rect.left;
+            let needsUpdate = false;
+
+            // Check if off-screen to the right
+            if (rect.right > window.innerWidth) {
+                newLeft = window.innerWidth - rect.width - 20; // 20px padding
+                needsUpdate = true;
+            }
+            // Check if off-screen to the bottom
+            if (rect.bottom > window.innerHeight) {
+                newTop = window.innerHeight - rect.height - 20; // 20px padding
+                needsUpdate = true;
+            }
+            // Check if off-screen to the left
+            if (rect.left < 0) {
+                newLeft = 20;
+                needsUpdate = true;
+            }
+            // Check if off-screen to the top
+            if (rect.top < 0) {
+                newTop = 20;
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+                element.style.top = newTop + "px";
+                element.style.left = newLeft + "px";
+
+                // Update localStorage with normalized position
+                localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
+                    top: newTop,
+                    left: newLeft
+                }));
+            }
+        });
+
         element.onmousedown = dragMouseDown;
 
         function dragMouseDown(e) {
@@ -415,6 +475,13 @@ window.addEventListener("load", function () {
             // Restore styles
             element.style.transition = 'background-color 0.3s, opacity 0.3s';
             element.style.opacity = ''; // Revert to CSS default (0.4 or 1 on hover)
+
+            // Save new position to localStorage
+            const rect = element.getBoundingClientRect();
+            localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
+                top: rect.top,
+                left: rect.left
+            }));
 
             // Small timeout to allow the click event to fire (or be blocked) 
             // before resetting drag state if needed, though we check attribute in click handler
