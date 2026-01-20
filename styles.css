@@ -1,4 +1,4 @@
-/* Clarity Design System - Floating Action Button Style - HIGH SPECIFICITY */
+/* Clarity Design System - Floating Action Button Style - TEXT ONLY */
 
 /* Use ID selector with !important to override any inherited vRO styles */
 button#resize-btn {
@@ -10,34 +10,33 @@ button#resize-btn {
     /* Clarity Action Blue - Force Background and Color */
     background-color: #0072a3 !important;
     color: #ffffff !important;
-    fill: #ffffff !important;
-    /* For SVGs */
 
     /* Typography */
     font-family: 'Metropolis', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif !important;
     font-size: 11px !important;
     font-weight: 600 !important;
-    line-height: 12px !important;
+    line-height: 24px !important;
+    /* Vertically center text */
     letter-spacing: 1px !important;
     text-transform: uppercase !important;
     text-align: center !important;
 
-    /* Box Model - Force Reset */
+    /* Box Model */
     border: 1px solid #0072a3 !important;
     border-radius: 3px !important;
-    padding: 0 12px 0 34px !important;
-    /* Top/Bottom 0, Left space for icon */
+    padding: 0 16px !important;
+    /* Even padding since no icon */
     margin: 0 !important;
-    height: 24px !important;
-    min-width: 72px !important;
+    height: 26px !important;
+    /* Slightly taller to accommodate text comfortably */
+    min-width: 80px !important;
     width: auto !important;
     min-height: 0 !important;
     box-sizing: border-box !important;
 
     /* Layout */
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    display: inline-block !important;
+    /* Simple block layout */
 
     /* Effects */
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
@@ -64,36 +63,6 @@ button#resize-btn:active {
     background-color: #004461 !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
     transform: translateY(1px) !important;
-}
-
-/* Icon Styling - Force size and color */
-button#resize-btn svg {
-    position: absolute !important;
-    left: 8px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-
-    /* Force exact dimensions */
-    width: 16px !important;
-    height: 16px !important;
-    max-width: 16px !important;
-    max-height: 16px !important;
-
-    /* Force Color */
-    fill: #ffffff !important;
-    stroke: none !important;
-
-    /* Remove any margins/padding */
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-/* Span styling to ensure text alignment */
-button#resize-btn span {
-    display: inline-block !important;
-    vertical-align: middle !important;
-    color: #ffffff !important;
-    pointer-events: none !important;
 }
 
 /* Dragging state */
