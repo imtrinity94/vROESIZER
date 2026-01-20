@@ -75,10 +75,11 @@ window.addEventListener("load", function () {
         // Create Floating Button
         let button = document.createElement("button");
         button.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+                <path d="M28,4H12a2,2,0,0,0-2,2H28V30H12V20.2H10V30a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V6A2,2,0,0,0,28,4Z"></path>
+                <path d="M15.12,18.46a1,1,0,1,0,1.41,1.41l5.79-5.79L16.54,8.29a1,1,0,0,0-1.41,1.41L18.5,13H4a1,1,0,0,0-1,1,1,1,0,0,0,1,1H18.5Z"></path>
             </svg>
-            <span>Maximize Editor</span>
+            <span>Maximize</span>
         `;
         button.id = "resize-btn";
         // Note: Main styles are in styles.css
@@ -275,10 +276,11 @@ window.addEventListener("load", function () {
                 }, 350);
 
                 button.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/>
+                    <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4,28H20a2,2,0,0,0,2-2V9.8h2V26a2,2,0,0,0-2,2H4a2,2,0,0,0-2,2V6A2,2,0,0,0,4,4H20a2,2,0,0,0-2-2H4A2,2,0,0,0,2,4V26A2,2,0,0,0,4,28Z"></path>
+                        <path d="M14.5,19A1,1,0,0,0,13.09,19L7.3,13.21l5.79-5.79A1,1,0,0,0,11.68,6L6.5,11.18a1.61,1.61,0,0,0,0,2.27L11.68,18.62A1,1,0,0,0,14.5,19Z"></path>                                
                     </svg>
-                    <span>Restore Editor</span>
+                    <span>Restore</span>
                 `;
             } else {
                 // Restore original states
@@ -343,10 +345,11 @@ window.addEventListener("load", function () {
                 }, 350);
 
                 button.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                    <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M28,4H12a2,2,0,0,0-2,2H28V30H12V20.2H10V30a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V6A2,2,0,0,0,28,4Z"></path>
+                        <path d="M15.12,18.46a1,1,0,1,0,1.41,1.41l5.79-5.79L16.54,8.29a1,1,0,0,0-1.41,1.41L18.5,13H4a1,1,0,0,0-1,1,1,1,0,0,0,1,1H18.5Z"></path>
                     </svg>
-                    <span>Maximize Editor</span>
+                    <span>Maximize</span>
                 `;
             }
         });
