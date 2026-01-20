@@ -74,7 +74,12 @@ window.addEventListener("load", function () {
 
         // Create Floating Button
         let button = document.createElement("button");
-        button.innerText = "Maximize Editor";
+        button.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+            <span>Maximize Editor</span>
+        `;
         button.id = "resize-btn";
         // Note: Main styles are in styles.css
 
@@ -269,7 +274,12 @@ window.addEventListener("load", function () {
                     window.dispatchEvent(new Event('resize'));
                 }, 350);
 
-                button.innerText = "Restore Editor";
+                button.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/>
+                    </svg>
+                    <span>Restore Editor</span>
+                `;
             } else {
                 // Restore original states
                 if (firstPanel && originalStates.has(firstPanel)) {
@@ -332,7 +342,12 @@ window.addEventListener("load", function () {
                     window.dispatchEvent(new Event('resize'));
                 }, 350);
 
-                button.innerText = "Maximize Editor";
+                button.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                    </svg>
+                    <span>Maximize Editor</span>
+                `;
             }
         });
     }
