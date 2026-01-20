@@ -163,21 +163,26 @@ window.addEventListener("load", function () {
             }
 
             if (expanded) {
-                // Save original states before modifying (only on first expansion)
+                // Save original states using Computed Style to get exact pixel dimensions
+                // This prevents issues where 'style.width' is empty (handled by flex/css class) 
+                // and restoring it to empty causes collapse.
                 if (firstPanel && !originalStates.has(firstPanel)) {
+                    const computed = window.getComputedStyle(firstPanel);
                     originalStates.set(firstPanel, {
-                        width: firstPanel.style.width,
-                        display: firstPanel.style.display,
-                        height: firstPanel.style.height || getComputedStyle(firstPanel).height,
-                        flex: firstPanel.style.flex || getComputedStyle(firstPanel).flex
+                        width: firstPanel.style.width || computed.width,
+                        display: firstPanel.style.display || computed.display,
+                        height: firstPanel.style.height || computed.height,
+                        flex: firstPanel.style.flex || computed.flex
                     });
                 }
 
                 if (secondPanel && !originalStates.has(secondPanel)) {
+                    const computed = window.getComputedStyle(secondPanel);
                     originalStates.set(secondPanel, {
-                        width: secondPanel.style.width,
-                        display: secondPanel.style.display,
-                        height: secondPanel.style.height || getComputedStyle(secondPanel).height
+                        width: secondPanel.style.width || computed.width,
+                        display: secondPanel.style.display || computed.display,
+                        height: secondPanel.style.height || computed.height,
+                        flex: secondPanel.style.flex || computed.flex
                     });
                 }
 
@@ -187,7 +192,6 @@ window.addEventListener("load", function () {
 
                 if (!isActionView) {
                     // WORKFLOW VIEW Strategy (Horizontal Split):
-                    // Hide FIRST panel (Schema/Sidebar) to expand SECOND panel (Editor)
                     if (firstPanel) {
                         firstPanel.style.width = "5%";
                         setTimeout(() => {
@@ -199,15 +203,9 @@ window.addEventListener("load", function () {
                         secondPanel.style.width = "95%";
                     }
                 } else {
-                    // ACTION VIEW Strategy (Vertical Split or Editor in First Panel):
-                    // Keep FIRST panel (Editor). Hide SECOND panel (Logs/Details) if present.
+                    // ACTION VIEW Strategy (Vertical Split):
                     if (secondPanel) {
                         secondPanel.style.display = "none";
-                    }
-                    if (firstPanel) {
-                        // Ensure first panel takes full available space in the split
-                        // For vertical split, height is key, but usually flex handles it if 2nd is hidden
-                        // We might not need to set specific styles if we hide the other panel and gutter
                     }
                 }
 
@@ -215,48 +213,47 @@ window.addEventListener("load", function () {
                     gutter.style.display = "none";
                 }
 
-                // Hide elements to increase vertical space - always hide regardless of saved state
+                // Hide elements
                 elementsToToggle.forEach(el => {
                     if (el) {
-                        // Save original state only on first expansion
                         if (!originalStates.has(el)) {
+                            const computed = window.getComputedStyle(el);
                             originalStates.set(el, {
-                                display: el.style.display || getComputedStyle(el).display,
-                                height: el.style.height || getComputedStyle(el).height,
-                                overflow: el.style.overflow || getComputedStyle(el).overflow
+                                display: el.style.display, // Keep original inline display or undefined
+                                computedDisplay: computed.display,
+                                height: el.style.height || computed.height,
+                                overflow: el.style.overflow || computed.overflow
                             });
                         }
-
-                        // Always hide the element when expanding
                         el.style.display = "none";
                     }
                 });
 
-                // Find the editor container and maximize its height
+                // Maximize editor container
                 const editorContainer = document.querySelector('.editor-box');
                 if (editorContainer) {
                     if (!originalStates.has(editorContainer)) {
+                        const computed = window.getComputedStyle(editorContainer);
                         originalStates.set(editorContainer, {
-                            height: editorContainer.style.height || getComputedStyle(editorContainer).height
+                            height: editorContainer.style.height || computed.height
                         });
                     }
-
-                    editorContainer.style.height = "calc(100vh - 50px)"; // Reduced offset since we hide headers
+                    editorContainer.style.height = "calc(100vh - 50px)";
                 }
 
-                // Find the Monaco editor instance and maximize it
+                // Maximize monaco editor
                 const monacoEditor = document.querySelector('.monaco-editor');
                 if (monacoEditor) {
                     if (!originalStates.has(monacoEditor)) {
+                        const computed = window.getComputedStyle(monacoEditor);
                         originalStates.set(monacoEditor, {
-                            height: monacoEditor.style.height || getComputedStyle(monacoEditor).height
+                            height: monacoEditor.style.height || computed.height
                         });
                     }
-
-                    monacoEditor.style.height = "calc(100vh - 70px)"; // Reduced offset
+                    monacoEditor.style.height = "calc(100vh - 70px)";
                 }
 
-                // Force Monaco editor to refresh its layout
+                // Refresh layout
                 setTimeout(function () {
                     if (window.monaco && window.monaco.editor) {
                         const editors = window.monaco.editor.getEditors();
@@ -264,34 +261,34 @@ window.addEventListener("load", function () {
                             editors.forEach(ed => ed.layout());
                         }
                     }
-
-                    // Dispatch resize event to trigger any internal resize handlers
                     window.dispatchEvent(new Event('resize'));
                 }, 350);
 
                 button.innerText = "RESTORE";
             } else {
-                // Restore original states
+                // RESTORE LOGIC
+
                 if (firstPanel && originalStates.has(firstPanel)) {
                     const state = originalStates.get(firstPanel);
                     firstPanel.style.display = state.display || "";
 
                     if (!isActionView) {
-                        // Short delay to ensure display change takes effect before width animation
                         setTimeout(() => {
-                            firstPanel.style.width = state.width || "";
+                            // Restore explicit width if it was captured, otherwise empty string
+                            firstPanel.style.width = state.width;
                         }, 10);
                     } else {
-                        firstPanel.style.height = state.height || "";
-                        firstPanel.style.flex = state.flex || "";
+                        firstPanel.style.height = state.height;
+                        firstPanel.style.flex = state.flex;
                     }
                 }
 
                 if (secondPanel && originalStates.has(secondPanel)) {
                     const state = originalStates.get(secondPanel);
-                    secondPanel.style.width = state.width || "";
+                    secondPanel.style.width = state.width;
                     secondPanel.style.display = state.display || "";
-                    secondPanel.style.height = state.height || "";
+                    secondPanel.style.height = state.height;
+                    secondPanel.style.flex = state.flex;
                 }
 
                 if (gutter) {
@@ -302,25 +299,26 @@ window.addEventListener("load", function () {
                 elementsToToggle.forEach(el => {
                     if (el && originalStates.has(el)) {
                         const state = originalStates.get(el);
+                        // Restore to inline style if it existed, otherwise remove display property to revert to css
                         el.style.display = state.display || "";
-                        el.style.height = state.height || "";
-                        el.style.overflow = state.overflow || "";
+                        el.style.height = state.height;
+                        el.style.overflow = state.overflow;
                     }
                 });
 
-                // Restore editor container height
+                // Restore editor container
                 const editorContainer = document.querySelector('.editor-box');
                 if (editorContainer && originalStates.has(editorContainer)) {
-                    editorContainer.style.height = originalStates.get(editorContainer).height || "";
+                    editorContainer.style.height = originalStates.get(editorContainer).height;
                 }
 
-                // Restore Monaco editor height
+                // Restore monaco editor
                 const monacoEditor = document.querySelector('.monaco-editor');
                 if (monacoEditor && originalStates.has(monacoEditor)) {
-                    monacoEditor.style.height = originalStates.get(monacoEditor).height || "";
+                    monacoEditor.style.height = originalStates.get(monacoEditor).height;
                 }
 
-                // Force layout refresh
+                // Refresh layout
                 setTimeout(function () {
                     if (window.monaco && window.monaco.editor) {
                         const editors = window.monaco.editor.getEditors();
@@ -328,7 +326,6 @@ window.addEventListener("load", function () {
                             editors.forEach(ed => ed.layout());
                         }
                     }
-
                     window.dispatchEvent(new Event('resize'));
                 }, 350);
 
