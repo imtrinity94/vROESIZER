@@ -1,67 +1,50 @@
 // This script runs after the page loads
 window.addEventListener("load", function () {
-    // Track if we've already set up the observer
-    let observerSetUp = false;
-    // Function to detect VCF Operations Orchestrator version
-    function detectVROVersion() {
-        // Check for VCF Ops Orchestrator 9+ elements
-        const isVCF9 = document.querySelector('split-layout[class*="horizontal"]') !== null ||
-            document.querySelector('.schema-area-container') !== null;
+    // Track the current editor instance to detect changes (navigation)
+    let lastEditor = null;
+    let observer = null;
 
-        return isVCF9 ? 'vcf9' : 'legacy';
-    }
-
-    // Function to find the Monaco editor in vRO
-    function findEditor() {
-        const version = detectVROVersion();
-        let editor;
-
-        if (version === 'vcf9') {
-            // For VCF 9+
-            editor = document.querySelector('.monaco-editor') ||
-                document.querySelector('.editor-panel') ||
-                document.querySelector('.split-right');
-        } else {
-            // Legacy vRO
-            editor = document.querySelector(".monaco-editor") ||
-                document.querySelector("[data-mpt]") ||
-                document.querySelector(".monaco-scrollable-element");
-        }
-
-        return { editor, version };
-    }
-
-    // Function to initialize the extension
-    function initializeExtension() {
+    // Function to check for editor changes
+    function checkEditorState() {
         const { editor, version } = findEditor();
+
         if (editor) {
-            setupResizeButton(editor, version);
-            console.log(`vRO editor found (${version}) and resize button added`);
-            return true;
+            // If we found an editor and it's different from the last one we saw
+            if (editor !== lastEditor) {
+                console.log(`New vRO editor detected (${version}). Initializing button...`);
+                lastEditor = editor;
+                setupResizeButton(editor, version);
+            }
+        } else {
+            // No editor found. If we previously had one, we should probably remove the button
+            if (lastEditor) {
+                console.log('Editor removed from view. Removing button.');
+                lastEditor = null;
+                const existingBtn = document.getElementById('resize-btn');
+                if (existingBtn) {
+                    existingBtn.remove();
+                }
+            }
         }
-        return false;
     }
+
+    // Start observing the document
+    observer = new MutationObserver((mutations) => {
+        // Debounce or just run check? 
+        // Since finding editor is fast (querySelector), running on mutation is okay, 
+        // but we can limit it if needed. For now, direct check is fine.
+        checkEditorState();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false // We mostly care about nodes being added/removed
+    });
 
     // Initial check
-    if (!initializeExtension() && !observerSetUp) {
-        // If editor not found, set up a MutationObserver
-        const observer = new MutationObserver((mutations, obs) => {
-            if (initializeExtension()) {
-                // Stop observing once we've found and set up the editor
-                obs.disconnect();
-                observerSetUp = false;
-            }
-        });
-
-        // Start observing the document with the configured parameters
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true
-        });
-        observerSetUp = true;
-        console.log('MutationObserver started to detect editor loading');
-    }
+    checkEditorState();
+    console.log('MutationObserver running to detect editor navigation/reloads');
 
     function setupResizeButton(editor, version = 'legacy') {
         console.log('Setting up resize button for version:', version);
