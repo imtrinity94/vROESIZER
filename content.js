@@ -78,19 +78,17 @@ window.addEventListener("load", function () {
 
         // Note: Main styles are also in styles.css as backup
 
-        // Add to a fixed position container to prevent being hidden
-        let container = document.getElementById('vro-resizer-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'vro-resizer-container';
-            container.style.position = 'fixed';
-            container.style.bottom = '0';
-            container.style.right = '0';
-            container.style.zIndex = '999999';
-            document.body.appendChild(container);
-        }
-        container.appendChild(button);
-        console.log('Button added to container in DOM');
+        // Append directly to body to avoid container clipping/z-index issues
+        document.body.appendChild(button);
+
+        // Initial Position (Bottom Right)
+        button.style.position = 'fixed';
+        button.style.bottom = '30px';
+        button.style.right = '30px';
+        button.style.left = 'auto';
+        button.style.top = 'auto';
+
+        console.log('Button added directly to body');
 
         // Add transition styles to head
         const styleElement = document.createElement('style');
@@ -115,221 +113,227 @@ window.addEventListener("load", function () {
                 return;
             }
 
-            expanded = !expanded;
+            try {
+                expanded = !expanded;
 
-            // Version-specific element selection
-            let splitLayout, firstPanel, secondPanel, gutter, elementsToToggle;
-            let isActionView = false;
+                // Version-specific element selection
+                let splitLayout, firstPanel, secondPanel, gutter, elementsToToggle;
+                let isActionView = false;
 
-            if (version === 'vcf9') {
-                // VCF 9+ specific elements
-                splitLayout = document.querySelector('split-layout.horizontal');
-                firstPanel = document.querySelector('.schema-area-container .firstPanel');
-                secondPanel = document.querySelector('.schema-area-container .secondPanel');
-                gutter = document.querySelector('.schema-area-container .gutter-horizontal') || document.querySelector('.schema-area-container .gutter');
+                if (version === 'vcf9') {
+                    // VCF 9+ specific elements
+                    splitLayout = document.querySelector('split-layout.horizontal');
+                    firstPanel = document.querySelector('.schema-area-container .firstPanel');
+                    secondPanel = document.querySelector('.schema-area-container .secondPanel');
+                    gutter = document.querySelector('.schema-area-container .gutter-horizontal') || document.querySelector('.schema-area-container .gutter');
 
-                elementsToToggle = [
-                    document.querySelector('.button-bar'),
-                    document.querySelector('.prototypes > clr-tabs > ul'),
-                    document.querySelector('#parameter-pills'),
-                    document.querySelector('.actions'),
-                    document.querySelector('.collapse-element-container'),
-                    document.querySelector('.schema-area-container .button-bar')
-                ];
-            } else {
-                // Legacy vRO elements (also covers Action views which might fall here)
-                splitLayout = document.querySelector('split-layout');
-                firstPanel = document.querySelector('.firstPanel');
-                secondPanel = document.querySelector('.secondPanel');
-
-                // Detect Action View: First panel is usually the editor area in Actions (Vertical Split)
-                if (firstPanel && firstPanel.classList.contains('editor-area')) {
-                    isActionView = true;
-                }
-
-                // More robust gutter selector handles both horizontal and vertical layouts
-                gutter = document.querySelector('.gutter-horizontal') ||
-                    document.querySelector('.gutter-vertical') ||
-                    document.querySelector('.gutter');
-
-                elementsToToggle = [
-                    document.querySelector('.button-bar'),
-                    document.querySelector('.prototypes > clr-tabs > ul'),
-                    document.querySelector('.action-header'), // Header in Action view
-                    document.querySelector('#parameter-pills'),
-                    document.querySelector('.actions'),
-                    document.querySelector('.collapse-element-container')
-                ];
-            }
-
-            if (expanded) {
-                // Save original states using Computed Style to get exact pixel dimensions
-                // This prevents issues where 'style.width' is empty (handled by flex/css class) 
-                // and restoring it to empty causes collapse.
-                if (firstPanel && !originalStates.has(firstPanel)) {
-                    const computed = window.getComputedStyle(firstPanel);
-                    originalStates.set(firstPanel, {
-                        width: firstPanel.style.width || computed.width,
-                        display: firstPanel.style.display || computed.display,
-                        height: firstPanel.style.height || computed.height,
-                        flex: firstPanel.style.flex || computed.flex
-                    });
-                }
-
-                if (secondPanel && !originalStates.has(secondPanel)) {
-                    const computed = window.getComputedStyle(secondPanel);
-                    originalStates.set(secondPanel, {
-                        width: secondPanel.style.width || computed.width,
-                        display: secondPanel.style.display || computed.display,
-                        height: secondPanel.style.height || computed.height,
-                        flex: secondPanel.style.flex || computed.flex
-                    });
-                }
-
-                // Add transition class for smooth animation
-                if (firstPanel) firstPanel.classList.add('transition-element');
-                if (secondPanel) secondPanel.classList.add('transition-element');
-
-                if (!isActionView) {
-                    // WORKFLOW VIEW Strategy (Horizontal Split):
-                    if (firstPanel) {
-                        firstPanel.style.width = "5%";
-                        setTimeout(() => {
-                            if (expanded) firstPanel.style.display = "none";
-                        }, 300);
-                    }
-
-                    if (secondPanel) {
-                        secondPanel.style.width = "95%";
-                    }
+                    elementsToToggle = [
+                        document.querySelector('.button-bar'),
+                        document.querySelector('.prototypes > clr-tabs > ul'),
+                        document.querySelector('#parameter-pills'),
+                        document.querySelector('.actions'),
+                        document.querySelector('.collapse-element-container'),
+                        document.querySelector('.schema-area-container .button-bar')
+                    ];
                 } else {
-                    // ACTION VIEW Strategy (Vertical Split):
-                    if (secondPanel) {
-                        secondPanel.style.display = "none";
+                    // Legacy vRO elements (also covers Action views which might fall here)
+                    splitLayout = document.querySelector('split-layout');
+                    firstPanel = document.querySelector('.firstPanel');
+                    secondPanel = document.querySelector('.secondPanel');
+
+                    // Detect Action View: First panel is usually the editor area in Actions (Vertical Split)
+                    if (firstPanel && firstPanel.classList.contains('editor-area')) {
+                        isActionView = true;
                     }
+
+                    // More robust gutter selector handles both horizontal and vertical layouts
+                    gutter = document.querySelector('.gutter-horizontal') ||
+                        document.querySelector('.gutter-vertical') ||
+                        document.querySelector('.gutter');
+
+                    elementsToToggle = [
+                        document.querySelector('.button-bar'),
+                        document.querySelector('.prototypes > clr-tabs > ul'),
+                        document.querySelector('.action-header'), // Header in Action view
+                        document.querySelector('#parameter-pills'),
+                        document.querySelector('.actions'),
+                        document.querySelector('.collapse-element-container')
+                    ];
                 }
 
-                if (gutter) {
-                    gutter.style.display = "none";
-                }
-
-                // Hide elements
-                elementsToToggle.forEach(el => {
-                    if (el) {
-                        if (!originalStates.has(el)) {
-                            const computed = window.getComputedStyle(el);
-                            originalStates.set(el, {
-                                display: el.style.display, // Keep original inline display or undefined
-                                computedDisplay: computed.display,
-                                height: el.style.height || computed.height,
-                                overflow: el.style.overflow || computed.overflow
-                            });
-                        }
-                        el.style.display = "none";
-                    }
-                });
-
-                // Maximize editor container
-                const editorContainer = document.querySelector('.editor-box');
-                if (editorContainer) {
-                    if (!originalStates.has(editorContainer)) {
-                        const computed = window.getComputedStyle(editorContainer);
-                        originalStates.set(editorContainer, {
-                            height: editorContainer.style.height || computed.height
+                if (expanded) {
+                    // Save original states using Computed Style to get exact pixel dimensions
+                    // This prevents issues where 'style.width' is empty (handled by flex/css class) 
+                    // and restoring it to empty causes collapse.
+                    if (firstPanel && !originalStates.has(firstPanel)) {
+                        const computed = window.getComputedStyle(firstPanel);
+                        originalStates.set(firstPanel, {
+                            width: firstPanel.style.width || computed.width,
+                            display: firstPanel.style.display || computed.display,
+                            height: firstPanel.style.height || computed.height,
+                            flex: firstPanel.style.flex || computed.flex
                         });
                     }
-                    editorContainer.style.height = "calc(100vh - 50px)";
-                }
 
-                // Maximize monaco editor
-                const monacoEditor = document.querySelector('.monaco-editor');
-                if (monacoEditor) {
-                    if (!originalStates.has(monacoEditor)) {
-                        const computed = window.getComputedStyle(monacoEditor);
-                        originalStates.set(monacoEditor, {
-                            height: monacoEditor.style.height || computed.height
+                    if (secondPanel && !originalStates.has(secondPanel)) {
+                        const computed = window.getComputedStyle(secondPanel);
+                        originalStates.set(secondPanel, {
+                            width: secondPanel.style.width || computed.width,
+                            display: secondPanel.style.display || computed.display,
+                            height: secondPanel.style.height || computed.height,
+                            flex: secondPanel.style.flex || computed.flex
                         });
                     }
-                    monacoEditor.style.height = "calc(100vh - 70px)";
-                }
 
-                // Refresh layout
-                setTimeout(function () {
-                    if (window.monaco && window.monaco.editor) {
-                        const editors = window.monaco.editor.getEditors();
-                        if (editors && editors.length) {
-                            editors.forEach(ed => ed.layout());
-                        }
-                    }
-                    window.dispatchEvent(new Event('resize'));
-                }, 350);
-
-                button.innerText = "RESTORE";
-            } else {
-                // RESTORE LOGIC
-
-                if (firstPanel && originalStates.has(firstPanel)) {
-                    const state = originalStates.get(firstPanel);
-                    firstPanel.style.display = state.display || "";
+                    // Add transition class for smooth animation
+                    if (firstPanel) firstPanel.classList.add('transition-element');
+                    if (secondPanel) secondPanel.classList.add('transition-element');
 
                     if (!isActionView) {
-                        setTimeout(() => {
-                            // Restore explicit width if it was captured, otherwise empty string
-                            firstPanel.style.width = state.width;
-                        }, 10);
+                        // WORKFLOW VIEW Strategy (Horizontal Split):
+                        if (firstPanel) {
+                            firstPanel.style.width = "5%";
+                            setTimeout(() => {
+                                if (expanded) firstPanel.style.display = "none";
+                            }, 300);
+                        }
+
+                        if (secondPanel) {
+                            secondPanel.style.width = "95%";
+                        }
                     } else {
-                        firstPanel.style.height = state.height;
-                        firstPanel.style.flex = state.flex;
-                    }
-                }
-
-                if (secondPanel && originalStates.has(secondPanel)) {
-                    const state = originalStates.get(secondPanel);
-                    secondPanel.style.width = state.width;
-                    secondPanel.style.display = state.display || "";
-                    secondPanel.style.height = state.height;
-                    secondPanel.style.flex = state.flex;
-                }
-
-                if (gutter) {
-                    gutter.style.display = "";
-                }
-
-                // Restore hidden elements
-                elementsToToggle.forEach(el => {
-                    if (el && originalStates.has(el)) {
-                        const state = originalStates.get(el);
-                        // Restore to inline style if it existed, otherwise remove display property to revert to css
-                        el.style.display = state.display || "";
-                        el.style.height = state.height;
-                        el.style.overflow = state.overflow;
-                    }
-                });
-
-                // Restore editor container
-                const editorContainer = document.querySelector('.editor-box');
-                if (editorContainer && originalStates.has(editorContainer)) {
-                    editorContainer.style.height = originalStates.get(editorContainer).height;
-                }
-
-                // Restore monaco editor
-                const monacoEditor = document.querySelector('.monaco-editor');
-                if (monacoEditor && originalStates.has(monacoEditor)) {
-                    monacoEditor.style.height = originalStates.get(monacoEditor).height;
-                }
-
-                // Refresh layout
-                setTimeout(function () {
-                    if (window.monaco && window.monaco.editor) {
-                        const editors = window.monaco.editor.getEditors();
-                        if (editors && editors.length) {
-                            editors.forEach(ed => ed.layout());
+                        // ACTION VIEW Strategy (Vertical Split):
+                        if (secondPanel) {
+                            secondPanel.style.display = "none";
                         }
                     }
-                    window.dispatchEvent(new Event('resize'));
-                }, 350);
 
-                button.innerText = "MAXIMIZE";
+                    if (gutter) {
+                        gutter.style.display = "none";
+                    }
+
+                    // Hide elements
+                    elementsToToggle.forEach(el => {
+                        if (el) {
+                            if (!originalStates.has(el)) {
+                                const computed = window.getComputedStyle(el);
+                                originalStates.set(el, {
+                                    display: el.style.display, // Keep original inline display or undefined
+                                    computedDisplay: computed.display,
+                                    height: el.style.height || computed.height,
+                                    overflow: el.style.overflow || computed.overflow
+                                });
+                            }
+                            el.style.display = "none";
+                        }
+                    });
+
+                    // Maximize editor container
+                    const editorContainer = document.querySelector('.editor-box');
+                    if (editorContainer) {
+                        if (!originalStates.has(editorContainer)) {
+                            const computed = window.getComputedStyle(editorContainer);
+                            originalStates.set(editorContainer, {
+                                height: editorContainer.style.height || computed.height
+                            });
+                        }
+                        editorContainer.style.height = "calc(100vh - 50px)";
+                    }
+
+                    // Maximize monaco editor
+                    const monacoEditor = document.querySelector('.monaco-editor');
+                    if (monacoEditor) {
+                        if (!originalStates.has(monacoEditor)) {
+                            const computed = window.getComputedStyle(monacoEditor);
+                            originalStates.set(monacoEditor, {
+                                height: monacoEditor.style.height || computed.height
+                            });
+                        }
+                        monacoEditor.style.height = "calc(100vh - 70px)";
+                    }
+
+                    // Refresh layout
+                    setTimeout(function () {
+                        if (window.monaco && window.monaco.editor) {
+                            const editors = window.monaco.editor.getEditors();
+                            if (editors && editors.length) {
+                                editors.forEach(ed => ed.layout());
+                            }
+                        }
+                        window.dispatchEvent(new Event('resize'));
+                    }, 350);
+
+                    button.innerText = "RESTORE";
+                } else {
+                    // RESTORE LOGIC
+
+                    if (firstPanel && originalStates.has(firstPanel)) {
+                        const state = originalStates.get(firstPanel);
+                        firstPanel.style.display = state.display || "";
+
+                        if (!isActionView) {
+                            setTimeout(() => {
+                                // Restore explicit width if it was captured, otherwise empty string
+                                firstPanel.style.width = state.width;
+                            }, 10);
+                        } else {
+                            firstPanel.style.height = state.height;
+                            firstPanel.style.flex = state.flex;
+                        }
+                    }
+
+                    if (secondPanel && originalStates.has(secondPanel)) {
+                        const state = originalStates.get(secondPanel);
+                        secondPanel.style.width = state.width;
+                        secondPanel.style.display = state.display || "";
+                        secondPanel.style.height = state.height;
+                        secondPanel.style.flex = state.flex;
+                    }
+
+                    if (gutter) {
+                        gutter.style.display = "";
+                    }
+
+                    // Restore hidden elements
+                    elementsToToggle.forEach(el => {
+                        if (el && originalStates.has(el)) {
+                            const state = originalStates.get(el);
+                            // Restore to inline style if it existed, otherwise remove display property to revert to css
+                            el.style.display = state.display || "";
+                            el.style.height = state.height;
+                            el.style.overflow = state.overflow;
+                        }
+                    });
+
+                    // Restore editor container
+                    const editorContainer = document.querySelector('.editor-box');
+                    if (editorContainer && originalStates.has(editorContainer)) {
+                        editorContainer.style.height = originalStates.get(editorContainer).height;
+                    }
+
+                    // Restore monaco editor
+                    const monacoEditor = document.querySelector('.monaco-editor');
+                    if (monacoEditor && originalStates.has(monacoEditor)) {
+                        monacoEditor.style.height = originalStates.get(monacoEditor).height;
+                    }
+
+                    // Refresh layout
+                    setTimeout(function () {
+                        if (window.monaco && window.monaco.editor) {
+                            const editors = window.monaco.editor.getEditors();
+                            if (editors && editors.length) {
+                                editors.forEach(ed => ed.layout());
+                            }
+                        }
+                        window.dispatchEvent(new Event('resize'));
+                    }, 350);
+
+                    button.innerText = "MAXIMIZE";
+                }
+            } catch (err) {
+                console.error("Error in resize click handler:", err);
+                // Fallback to simpler state if error occurs
+                button.innerText = "ERROR - RELOAD";
             }
         });
     }
@@ -343,12 +347,13 @@ window.addEventListener("load", function () {
             try {
                 const pos = JSON.parse(savedPos);
                 // Ensure the saved position is within valid bounds (simple check)
-                if (pos.top >= 0 && pos.left >= 0 &&
+                if (pos.top && pos.left &&
+                    pos.top >= 0 && pos.left >= 0 &&
                     pos.top < window.innerHeight && pos.left < window.innerWidth) {
 
                     element.style.top = pos.top + "px";
                     element.style.left = pos.left + "px";
-                    element.style.bottom = 'auto';
+                    element.style.bottom = 'auto'; // Disable bottom/right relative positioning
                     element.style.right = 'auto';
                     element.style.position = 'fixed';
                 }
