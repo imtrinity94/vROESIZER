@@ -1,84 +1,106 @@
-/* Clarity Design System - Floating Action Button Style */
-#resize-btn {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 999999;
+/* Clarity Design System - Floating Action Button Style - HIGH SPECIFICITY */
 
-    /* Clarity Colors (Action Blue) */
-    background-color: #0072a3;
-    color: #ffffff;
+/* Use ID selector with !important to override any inherited vRO styles */
+button#resize-btn {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 999999 !important;
 
-    /* Typography - Metropolis matches vRO */
-    font-family: 'Metropolis', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 12px;
-    letter-spacing: 1px;
-    /* Standard Clarity button spacing */
-    text-transform: uppercase;
-    /* Clarity buttons are often uppercase */
+    /* Clarity Action Blue - Force Background and Color */
+    background-color: #0072a3 !important;
+    color: #ffffff !important;
+    fill: #ffffff !important;
+    /* For SVGs */
 
-    /* Shape & Box Model */
-    border: 1px solid #0072a3;
-    border-radius: 3px;
-    /* Standard Clarity border radius */
-    padding: 6px 12px 6px 34px;
-    /* Left padding space for icon */
-    height: 24px;
-    /* Standard small/compact button height, or 36px for regular */
-    min-width: 72px;
+    /* Typography */
+    font-family: 'Metropolis', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 12px !important;
+    letter-spacing: 1px !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+
+    /* Box Model - Force Reset */
+    border: 1px solid #0072a3 !important;
+    border-radius: 3px !important;
+    padding: 0 12px 0 34px !important;
+    /* Top/Bottom 0, Left space for icon */
+    margin: 0 !important;
+    height: 24px !important;
+    min-width: 72px !important;
+    width: auto !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
 
     /* Layout */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 
     /* Effects */
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-    /* Subtle shadow for floating element */
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+    cursor: pointer !important;
+    opacity: 1 !important;
 
-    /* Reset defaults */
-    outline: none;
-    text-decoration: none;
+    /* Reset Potential Inherited Styles */
+    outline: none !important;
+    text-decoration: none !important;
+    background-image: none !important;
 }
 
-#resize-btn:hover {
-    background-color: #00567a;
-    /* Darker blue on hover */
-    border-color: #00567a;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-    /* Elevated on hover */
-    text-decoration: none;
+/* Hover State */
+button#resize-btn:hover {
+    background-color: #00567a !important;
+    border-color: #00567a !important;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2) !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
 }
 
-#resize-btn:active {
-    background-color: #004461;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    transform: translateY(1px);
+/* Active/Pressed State */
+button#resize-btn:active {
+    background-color: #004461 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    transform: translateY(1px) !important;
 }
 
-/* Icon styling - Absolute positioning to sit nicely on the left */
-#resize-btn svg {
-    position: absolute;
-    left: 8px;
-    top: 50%;
-    transform: translateY(-50%);
+/* Icon Styling - Force size and color */
+button#resize-btn svg {
+    position: absolute !important;
+    left: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    /* Force exact dimensions */
     width: 16px !important;
-    /* Force small size */
     height: 16px !important;
-    fill: currentColor;
-    /* Clarity icons usually use fill over stroke */
+    max-width: 16px !important;
+    max-height: 16px !important;
+
+    /* Force Color */
+    fill: #ffffff !important;
+    stroke: none !important;
+
+    /* Remove any margins/padding */
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Span styling to ensure text alignment */
+button#resize-btn span {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    color: #ffffff !important;
+    pointer-events: none !important;
 }
 
 /* Dragging state */
-#resize-btn[data-dragged="true"] {
-    cursor: grabbing;
-    background-color: #00567a;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+button#resize-btn[data-dragged="true"] {
+    cursor: grabbing !important;
+    background-color: #00567a !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Add a class for when the editor is expanded */
