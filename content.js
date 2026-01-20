@@ -74,9 +74,26 @@ window.addEventListener("load", function () {
 
         // Create Floating Button
         let button = document.createElement("button");
-        button.innerText = "MAXIMIZE EDITOR";
+        button.innerText = "MAXIMIZE";
         button.id = "resize-btn";
-        // Note: Main styles are in styles.css
+
+        // FORCE styles inline to ensure they override vRO defaults
+        button.style.backgroundColor = "#0072a3";
+        button.style.color = "#ffffff";
+        button.style.border = "1px solid #0072a3";
+        button.style.padding = "0 16px";
+        button.style.textTransform = "uppercase";
+        button.style.fontSize = "11px";
+        button.style.fontWeight = "600";
+        button.style.letterSpacing = "1px";
+        button.style.borderRadius = "3px";
+        button.style.height = "24px";
+        button.style.lineHeight = "22px";
+        button.style.cursor = "pointer";
+        button.style.zIndex = "999999";
+        button.style.boxShadow = "0 1px 2px rgba(0,0,0,0.15)";
+
+        // Note: Main styles are also in styles.css as backup
 
         // Add to a fixed position container to prevent being hidden
         let container = document.getElementById('vro-resizer-container');
@@ -269,7 +286,7 @@ window.addEventListener("load", function () {
                     window.dispatchEvent(new Event('resize'));
                 }, 350);
 
-                button.innerText = "RESTORE EDITOR";
+                button.innerText = "RESTORE";
             } else {
                 // Restore original states
                 if (firstPanel && originalStates.has(firstPanel)) {
@@ -332,7 +349,7 @@ window.addEventListener("load", function () {
                     window.dispatchEvent(new Event('resize'));
                 }, 350);
 
-                button.innerText = "MAXIMIZE EDITOR";
+                button.innerText = "MAXIMIZE";
             }
         });
     }
