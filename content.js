@@ -139,6 +139,7 @@ window.addEventListener("load", function () {
             }
 
             try {
+                console.log(`Button clicked - Drag state: ${button.getAttribute('data-dragged')}`);
                 expanded = !expanded;
 
                 // Version-specific element selection
@@ -365,6 +366,9 @@ window.addEventListener("load", function () {
 
     function makeDraggable(element) {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        let startX = 0, startY = 0;
+        const dragThreshold = 5; // Pixels to move before counting as a drag
+        let isDragging = false;
 
         // Restore position from localStorage if available
         const savedPos = localStorage.getItem('vro-resizer-btn-pos');
@@ -430,6 +434,7 @@ window.addEventListener("load", function () {
         element.onmousedown = dragMouseDown;
 
         function dragMouseDown(e) {
+            console.log('Mouse down on resize button');
             e = e || window.event;
             // Only drag on left click
             if (e.button !== 0) return;
@@ -438,6 +443,9 @@ window.addEventListener("load", function () {
             // get the mouse cursor position at startup:
             pos3 = e.clientX;
             pos4 = e.clientY;
+            startX = e.clientX;
+            startY = e.clientY;
+            isDragging = false; // Reset dragging state
 
             // Mark as not dragged initially
             element.setAttribute('data-dragged', 'false');
@@ -445,36 +453,47 @@ window.addEventListener("load", function () {
             document.onmouseup = closeDragElement;
             // call a function whenever the cursor moves:
             document.onmousemove = elementDrag;
-
-            // Calculate current position to switch from bottom/right to top/left
-            const rect = element.getBoundingClientRect();
-            element.style.left = rect.left + 'px';
-            element.style.top = rect.top + 'px';
-            element.style.bottom = 'auto';
-            element.style.right = 'auto';
-            element.style.position = 'fixed'; // Ensure it stays fixed
-
-            // Disable transition and increase opacity during drag
-            element.style.transition = 'none';
-            element.style.opacity = '0.9';
         }
 
         function elementDrag(e) {
             e = e || window.event;
             e.preventDefault();
 
-            // Mark as dragged
-            element.setAttribute('data-dragged', 'true');
+            // Calculate distance moved from start
+            const distSq = (e.clientX - startX) ** 2 + (e.clientY - startY) ** 2;
 
-            // calculate the new cursor position:
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
+            // Only start dragging if moved more than threshold
+            if (!isDragging && distSq > dragThreshold ** 2) {
+                isDragging = true;
+                console.log('Drag threshold exceeded - starting drag');
 
-            // set the element's new position:
-            element.style.top = (element.offsetTop - pos2) + "px";
-            element.style.left = (element.offsetLeft - pos1) + "px";
+                // Calculate current position to switch from bottom/right to top/left (only once when drag starts)
+                const rect = element.getBoundingClientRect();
+                element.style.left = rect.left + 'px';
+                element.style.top = rect.top + 'px';
+                element.style.bottom = 'auto';
+                element.style.right = 'auto';
+                element.style.position = 'fixed'; // Ensure it stays fixed
+
+                // Disable transition and increase opacity during drag
+                element.style.transition = 'none';
+                element.style.opacity = '0.9';
+
+                // Mark as dragged
+                element.setAttribute('data-dragged', 'true');
+            }
+
+            if (isDragging) {
+                // calculate the new cursor position:
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+
+                // set the element's new position:
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
         }
 
         function closeDragElement() {
@@ -482,19 +501,22 @@ window.addEventListener("load", function () {
             document.onmouseup = null;
             document.onmousemove = null;
 
-            // Restore styles
-            element.style.transition = 'background-color 0.3s, opacity 0.3s';
-            element.style.opacity = ''; // Revert to CSS default (0.4 or 1 on hover)
+            console.log(`Mouse up - Drag state: ${element.getAttribute('data-dragged')}`);
 
-            // Save new position to localStorage
-            const rect = element.getBoundingClientRect();
-            localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
-                top: rect.top,
-                left: rect.left
-            }));
+            if (isDragging) {
+                // Restore styles only if we were actually dragging
+                element.style.transition = 'background-color 0.3s, opacity 0.3s';
+                element.style.opacity = ''; // Revert to CSS default (0.4 or 1 on hover)
 
-            // Small timeout to allow the click event to fire (or be blocked) 
-            // before resetting drag state if needed, though we check attribute in click handler
+                // Save new position to localStorage
+                const rect = element.getBoundingClientRect();
+                localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
+                    top: rect.top,
+                    left: rect.left
+                }));
+            }
+
+            isDragging = false;
         }
     }
 });
