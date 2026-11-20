@@ -1,522 +1,610 @@
-// This script runs after the page loads
-window.addEventListener("load", function () {
-    // Track the current editor instance to detect changes (navigation)
-    let lastEditor = null;
-    let observer = null;
+// vROESIZER - vRO Code Editor Resizer
+// Adds a MAXIMIZE / RESTORE button to the Orchestrator script editor.
+//
+// Supported:
+//   - vRO / Aria Automation Orchestrator 8.x (standalone client)
+//   - VCF Operations Orchestrator 9.x (9.0, 9.1, 9.1.1). In 9.x the Orchestrator
+//     client runs inside an iframe of VCF Automation, so this script is injected
+//     into every frame (see "all_frames" in manifest.json) and only activates in
+//     the frame that actually hosts the Orchestrator client.
+(function () {
+    // Guard against double injection in the same frame
+    if (window.__vroesizerLoaded) {
+        return;
+    }
+    window.__vroesizerLoaded = true;
 
-    // Function to detect vRO version
-    function detectVROVersion() {
-        if (document.querySelector('split-layout.horizontal')) {
-            return 'vcf9';
-        }
-        return 'legacy'; // Default to legacy (7.x/8.x)
+    const LOG = '[vROESIZER]';
+    const BUTTON_ID = 'resize-btn';
+    const STYLE_ID = 'vroesizer-style';
+    const HIDE_CLASS = 'vroesizer-hide';
+    const FILL_WIDTH_CLASS = 'vroesizer-fill-width';
+    const FILL_HEIGHT_CLASS = 'vroesizer-fill-height';
+
+    // Only run in the Orchestrator client, not on every page that has a Monaco editor
+    function isOrchestratorPage() {
+        return /\/orchestration-ui(\/|$)/.test(window.location.pathname) ||
+            !!document.querySelector('o11n-app');
     }
 
-    // Function to find the editor in the DOM
-    function findEditor() {
-        // VCF 9+ structure
-        const vcf9Editor = document.querySelector('.monaco-editor');
-        if (vcf9Editor && document.querySelector('split-layout.horizontal')) {
-            return { editor: vcf9Editor, version: 'vcf9' };
-        }
-
-        // Legacy structure (and Action views)
-        const legacyEditor = document.querySelector('.monaco-editor');
-        if (legacyEditor) {
-            return { editor: legacyEditor, version: 'legacy' };
-        }
-
-        return { editor: null, version: null };
+    if (document.readyState === 'complete') {
+        init();
+    } else {
+        window.addEventListener('load', init);
     }
 
-    // Function to check for editor changes
-    function checkEditorState() {
-        const { editor, version } = findEditor();
+    function init() {
+        if (!isOrchestratorPage()) {
+            return;
+        }
 
-        if (editor) {
-            // If we found an editor and it's different from the last one we saw
-            if (editor !== lastEditor) {
-                console.log(`New vRO editor detected (${version}). Initializing button...`);
-                lastEditor = editor;
-                setupResizeButton(editor, version);
+        // Track the current editor instance to detect changes (navigation)
+        let lastEditor = null;
+        // Restore function of the currently maximized editor (null when not maximized)
+        let activeRestore = null;
+        let checkScheduled = false;
+
+        injectStyles();
+
+        // Function to find the editor in the DOM
+        function findEditor() {
+            const editor = document.querySelector('.monaco-editor');
+            if (!editor) {
+                return { editor: null, version: null };
             }
-        } else {
-            // No editor found. If we previously had one, we should probably remove the button
-            if (lastEditor) {
-                console.log('Editor removed from view. Removing button.');
+            return { editor: editor, version: detectVROVersion() };
+        }
+
+        // Function to detect the Orchestrator UI generation
+        function detectVROVersion() {
+            // VCF 9.x (and any build using nested horizontal split layouts)
+            if (document.querySelector('split-layout.horizontal')) {
+                return 'vcf9';
+            }
+            return 'legacy'; // Default to legacy (8.x)
+        }
+
+        function restoreIfMaximized() {
+            if (activeRestore) {
+                try {
+                    activeRestore();
+                } catch (err) {
+                    console.error(LOG, 'Error while restoring layout:', err);
+                }
+                activeRestore = null;
+            }
+        }
+
+        // Function to check for editor changes
+        function checkEditorState() {
+            const { editor, version } = findEditor();
+
+            if (editor) {
+                // If we found an editor and it's different from the last one we saw
+                if (editor !== lastEditor) {
+                    console.log(`${LOG} New Orchestrator editor detected (${version}). Initializing button...`);
+                    // The previous editor is gone: undo anything we changed for it
+                    restoreIfMaximized();
+                    lastEditor = editor;
+                    setupResizeButton(editor);
+                }
+            } else if (lastEditor) {
+                // Editor left the view (tab switch / navigation): undo our changes and remove the button
+                console.log(`${LOG} Editor removed from view. Removing button.`);
+                restoreIfMaximized();
                 lastEditor = null;
-                const existingBtn = document.getElementById('resize-btn');
+                const existingBtn = document.getElementById(BUTTON_ID);
                 if (existingBtn) {
                     existingBtn.remove();
                 }
             }
         }
-    }
 
-    // Start observing the document
-    observer = new MutationObserver((mutations) => {
-        // Debounce or just run check? 
-        // Since finding editor is fast (querySelector), running on mutation is okay, 
-        // but we can limit it if needed. For now, direct check is fine.
-        checkEditorState();
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: false // We mostly care about nodes being added/removed
-    });
-
-    // Initial check
-    checkEditorState();
-    console.log('MutationObserver running to detect editor navigation/reloads');
-
-    function setupResizeButton(editor, version = 'legacy') {
-        console.log('Setting up resize button for version:', version);
-
-        // Remove existing button if it exists
-        const existingBtn = document.getElementById('resize-btn');
-        if (existingBtn) {
-            existingBtn.remove();
-        }
-
-        // Create Floating Button
-        let button = document.createElement("button");
-        button.innerText = "MAXIMIZE";
-        button.id = "resize-btn";
-
-        // FORCE styles inline to ensure they override vRO defaults
-        button.style.backgroundColor = "#0072a3";
-        button.style.color = "#ffffff";
-        button.style.border = "1px solid #0072a3";
-        button.style.padding = "0 16px";
-        button.style.textTransform = "uppercase";
-        button.style.fontSize = "11px";
-        button.style.fontWeight = "600";
-        button.style.letterSpacing = "1px";
-        button.style.borderRadius = "3px";
-        button.style.height = "24px";
-        button.style.lineHeight = "22px";
-        button.style.cursor = "pointer";
-        button.style.zIndex = "999999";
-        button.style.boxShadow = "0 1px 2px rgba(0,0,0,0.15)";
-
-        // Note: Main styles are also in styles.css as backup
-
-        // Append directly to body to avoid container clipping/z-index issues
-        document.body.appendChild(button);
-
-        // Initial Position (Bottom Right)
-        button.style.position = 'fixed';
-        button.style.bottom = '30px';
-        button.style.right = '30px';
-        button.style.left = 'auto';
-        button.style.top = 'auto';
-
-        console.log('Button added directly to body');
-
-        // Add transition styles to head
-        const styleElement = document.createElement('style');
-        styleElement.textContent = `
-            .transition-element {
-                transition: all 0.3s ease-in-out !important;
-            }
-        `;
-        document.head.appendChild(styleElement);
-
-        // Make the button draggable
-        makeDraggable(button);
-
-
-        // Store original states
-        let originalStates = new Map();
-        let expanded = false;
-
-        button.addEventListener("click", function (e) {
-            // If the button was being dragged, don't trigger the click action
-            if (button.getAttribute('data-dragged') === 'true') {
+        // Observe the document, but run the check at most once per animation frame
+        const observer = new MutationObserver(function () {
+            if (checkScheduled) {
                 return;
             }
+            checkScheduled = true;
+            window.requestAnimationFrame(function () {
+                checkScheduled = false;
+                checkEditorState();
+            });
+        });
 
-            try {
-                console.log(`Button clicked - Drag state: ${button.getAttribute('data-dragged')}`);
-                expanded = !expanded;
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: false // We mostly care about nodes being added/removed
+        });
 
-                // Version-specific element selection
-                let splitLayout, firstPanel, secondPanel, gutter, elementsToToggle;
-                let isActionView = false;
+        // Initial check
+        checkEditorState();
 
-                if (version === 'vcf9') {
-                    // VCF 9+ specific elements
-                    splitLayout = document.querySelector('split-layout.horizontal');
-                    firstPanel = document.querySelector('.schema-area-container .firstPanel');
-                    secondPanel = document.querySelector('.schema-area-container .secondPanel');
-                    gutter = document.querySelector('.schema-area-container .gutter-horizontal') || document.querySelector('.schema-area-container .gutter');
+        function injectStyles() {
+            if (document.getElementById(STYLE_ID)) {
+                return;
+            }
+            const styleElement = document.createElement('style');
+            styleElement.id = STYLE_ID;
+            styleElement.textContent = `
+                .transition-element {
+                    transition: all 0.3s ease-in-out !important;
+                }
+                .${HIDE_CLASS} {
+                    display: none !important;
+                }
+                .${FILL_WIDTH_CLASS} {
+                    width: 100% !important;
+                    max-width: none !important;
+                    flex: 1 1 100% !important;
+                }
+                .${FILL_HEIGHT_CLASS} {
+                    height: 100% !important;
+                    max-height: none !important;
+                    flex: 1 1 100% !important;
+                }
+            `;
+            document.head.appendChild(styleElement);
+        }
 
-                    elementsToToggle = [
-                        document.querySelector('.button-bar'),
-                        document.querySelector('.prototypes > clr-tabs > ul'),
-                        document.querySelector('#parameter-pills'),
-                        document.querySelector('.actions'),
-                        document.querySelector('.collapse-element-container'),
-                        document.querySelector('.schema-area-container .button-bar')
-                    ];
-                } else {
-                    // Legacy vRO elements (also covers Action views which might fall here)
-                    splitLayout = document.querySelector('split-layout');
-                    firstPanel = document.querySelector('.firstPanel');
-                    secondPanel = document.querySelector('.secondPanel');
-
-                    // Detect Action View: First panel is usually the editor area in Actions (Vertical Split)
-                    if (firstPanel && firstPanel.classList.contains('editor-area')) {
-                        isActionView = true;
+        // Ask Monaco and the Orchestrator layout to re-measure after a size change
+        function refreshLayout() {
+            [50, 350].forEach(function (delay) {
+                setTimeout(function () {
+                    if (window.monaco && window.monaco.editor && window.monaco.editor.getEditors) {
+                        const editors = window.monaco.editor.getEditors();
+                        if (editors && editors.length) {
+                            editors.forEach(ed => ed.layout());
+                        }
                     }
+                    window.dispatchEvent(new Event('resize'));
+                }, delay);
+            });
+        }
 
-                    // More robust gutter selector handles both horizontal and vertical layouts
-                    gutter = document.querySelector('.gutter-horizontal') ||
-                        document.querySelector('.gutter-vertical') ||
-                        document.querySelector('.gutter');
+        // ------------------------------------------------------------------
+        // VCF 9.x strategy (workflows AND actions)
+        //
+        // The 9.x client nests several <split-layout> elements around the editor:
+        //   workflow: [schema canvas | element editor] > [inputs panel | code]
+        //   action:   [editor area / run details] > [script | API explorer + properties] > [inputs panel | code]
+        // Instead of relying on view-specific selectors, walk up from the editor and,
+        // in every split-layout on the way, hide the panes that do not contain the
+        // editor and let the editor's pane take the full size. Everything is done
+        // with CSS classes, so restoring is just removing those classes.
+        // ------------------------------------------------------------------
+        function maximizeVcf9(editor) {
+            const touched = [];
 
-                    elementsToToggle = [
-                        document.querySelector('.button-bar'),
-                        document.querySelector('.prototypes > clr-tabs > ul'),
-                        document.querySelector('.action-header'), // Header in Action view
-                        document.querySelector('#parameter-pills'),
-                        document.querySelector('.actions'),
-                        document.querySelector('.collapse-element-container')
-                    ];
+            function mark(el, className) {
+                if (el && !el.classList.contains(className)) {
+                    el.classList.add(className);
+                    touched.push({ el: el, className: className });
+                }
+            }
+
+            let node = editor;
+            while (node && node !== document.body) {
+                const parent = node.parentElement;
+                if (parent && parent.tagName === 'SPLIT-LAYOUT') {
+                    const fillClass = parent.classList.contains('vertical') ? FILL_HEIGHT_CLASS : FILL_WIDTH_CLASS;
+                    Array.from(parent.children).forEach(function (child) {
+                        if (child === node) {
+                            mark(child, fillClass);
+                        } else if (child.classList.contains('firstPanel') ||
+                            child.classList.contains('secondPanel') ||
+                            child.classList.contains('gutter')) {
+                            mark(child, HIDE_CLASS);
+                        }
+                    });
+                }
+                node = parent;
+            }
+
+            // Extra chrome around the editor that only costs vertical space
+            const chromeSelectors = [
+                '.button-bar',
+                '.prototypes > clr-tabs > ul',
+                '.action-header',
+                '#parameter-pills',
+                '.actions',
+                '.collapse-element-container'
+            ];
+            chromeSelectors.forEach(function (selector) {
+                document.querySelectorAll(selector).forEach(function (el) {
+                    if (!el.contains(editor)) {
+                        mark(el, HIDE_CLASS);
+                    }
+                });
+            });
+
+            refreshLayout();
+
+            // Return the restore function
+            return function restoreVcf9() {
+                touched.forEach(function (entry) {
+                    entry.el.classList.remove(entry.className);
+                });
+                refreshLayout();
+            };
+        }
+
+        // ------------------------------------------------------------------
+        // Legacy strategy (vRO / Aria Automation Orchestrator 8.x) - unchanged logic
+        // ------------------------------------------------------------------
+        function maximizeLegacy() {
+            const originalStates = new Map();
+            let isActionView = false;
+
+            const firstPanel = document.querySelector('.firstPanel');
+            const secondPanel = document.querySelector('.secondPanel');
+
+            // Detect Action View: First panel is usually the editor area in Actions (Vertical Split)
+            if (firstPanel && firstPanel.classList.contains('editor-area')) {
+                isActionView = true;
+            }
+
+            // More robust gutter selector handles both horizontal and vertical layouts
+            const gutter = document.querySelector('.gutter-horizontal') ||
+                document.querySelector('.gutter-vertical') ||
+                document.querySelector('.gutter');
+
+            const elementsToToggle = [
+                document.querySelector('.button-bar'),
+                document.querySelector('.prototypes > clr-tabs > ul'),
+                document.querySelector('.action-header'), // Header in Action view
+                document.querySelector('#parameter-pills'),
+                document.querySelector('.actions'),
+                document.querySelector('.collapse-element-container')
+            ];
+
+            const editorContainer = document.querySelector('.editor-box');
+            const monacoEditor = document.querySelector('.monaco-editor');
+            let maximized = true;
+
+            // Save original states using Computed Style to get exact pixel dimensions.
+            // This prevents issues where 'style.width' is empty (handled by flex/css class)
+            // and restoring it to empty causes collapse.
+            [firstPanel, secondPanel].forEach(function (panel) {
+                if (panel) {
+                    const computed = window.getComputedStyle(panel);
+                    originalStates.set(panel, {
+                        width: panel.style.width || computed.width,
+                        display: panel.style.display || computed.display,
+                        height: panel.style.height || computed.height,
+                        flex: panel.style.flex || computed.flex
+                    });
+                    // Add transition class for smooth animation
+                    panel.classList.add('transition-element');
+                }
+            });
+
+            if (!isActionView) {
+                // WORKFLOW VIEW Strategy (Horizontal Split):
+                if (firstPanel) {
+                    firstPanel.style.width = "5%";
+                    setTimeout(() => {
+                        if (maximized) firstPanel.style.display = "none";
+                    }, 300);
                 }
 
-                if (expanded) {
-                    // Save original states using Computed Style to get exact pixel dimensions
-                    // This prevents issues where 'style.width' is empty (handled by flex/css class) 
-                    // and restoring it to empty causes collapse.
-                    if (firstPanel && !originalStates.has(firstPanel)) {
-                        const computed = window.getComputedStyle(firstPanel);
-                        originalStates.set(firstPanel, {
-                            width: firstPanel.style.width || computed.width,
-                            display: firstPanel.style.display || computed.display,
-                            height: firstPanel.style.height || computed.height,
-                            flex: firstPanel.style.flex || computed.flex
-                        });
-                    }
+                if (secondPanel) {
+                    secondPanel.style.width = "95%";
+                }
+            } else if (secondPanel) {
+                // ACTION VIEW Strategy (Vertical Split):
+                secondPanel.style.display = "none";
+            }
 
-                    if (secondPanel && !originalStates.has(secondPanel)) {
-                        const computed = window.getComputedStyle(secondPanel);
-                        originalStates.set(secondPanel, {
-                            width: secondPanel.style.width || computed.width,
-                            display: secondPanel.style.display || computed.display,
-                            height: secondPanel.style.height || computed.height,
-                            flex: secondPanel.style.flex || computed.flex
-                        });
-                    }
+            if (gutter) {
+                gutter.style.display = "none";
+            }
 
-                    // Add transition class for smooth animation
-                    if (firstPanel) firstPanel.classList.add('transition-element');
-                    if (secondPanel) secondPanel.classList.add('transition-element');
+            // Hide elements
+            elementsToToggle.forEach(el => {
+                if (el) {
+                    const computed = window.getComputedStyle(el);
+                    originalStates.set(el, {
+                        display: el.style.display, // Keep original inline display or undefined
+                        height: el.style.height || computed.height,
+                        overflow: el.style.overflow || computed.overflow
+                    });
+                    el.style.display = "none";
+                }
+            });
+
+            // Maximize editor container
+            if (editorContainer) {
+                const computed = window.getComputedStyle(editorContainer);
+                originalStates.set(editorContainer, {
+                    height: editorContainer.style.height || computed.height
+                });
+                editorContainer.style.height = "calc(100vh - 50px)";
+            }
+
+            // Maximize monaco editor
+            if (monacoEditor) {
+                const computed = window.getComputedStyle(monacoEditor);
+                originalStates.set(monacoEditor, {
+                    height: monacoEditor.style.height || computed.height
+                });
+                monacoEditor.style.height = "calc(100vh - 70px)";
+            }
+
+            refreshLayout();
+
+            // Return the restore function
+            return function restoreLegacy() {
+                maximized = false;
+
+                if (firstPanel && originalStates.has(firstPanel)) {
+                    const state = originalStates.get(firstPanel);
+                    firstPanel.style.display = state.display || "";
 
                     if (!isActionView) {
-                        // WORKFLOW VIEW Strategy (Horizontal Split):
-                        if (firstPanel) {
-                            firstPanel.style.width = "5%";
-                            setTimeout(() => {
-                                if (expanded) firstPanel.style.display = "none";
-                            }, 300);
-                        }
-
-                        if (secondPanel) {
-                            secondPanel.style.width = "95%";
-                        }
+                        setTimeout(() => {
+                            // Restore explicit width if it was captured, otherwise empty string
+                            firstPanel.style.width = state.width;
+                        }, 10);
                     } else {
-                        // ACTION VIEW Strategy (Vertical Split):
-                        if (secondPanel) {
-                            secondPanel.style.display = "none";
-                        }
+                        firstPanel.style.height = state.height;
+                        firstPanel.style.flex = state.flex;
                     }
-
-                    if (gutter) {
-                        gutter.style.display = "none";
-                    }
-
-                    // Hide elements
-                    elementsToToggle.forEach(el => {
-                        if (el) {
-                            if (!originalStates.has(el)) {
-                                const computed = window.getComputedStyle(el);
-                                originalStates.set(el, {
-                                    display: el.style.display, // Keep original inline display or undefined
-                                    computedDisplay: computed.display,
-                                    height: el.style.height || computed.height,
-                                    overflow: el.style.overflow || computed.overflow
-                                });
-                            }
-                            el.style.display = "none";
-                        }
-                    });
-
-                    // Maximize editor container
-                    const editorContainer = document.querySelector('.editor-box');
-                    if (editorContainer) {
-                        if (!originalStates.has(editorContainer)) {
-                            const computed = window.getComputedStyle(editorContainer);
-                            originalStates.set(editorContainer, {
-                                height: editorContainer.style.height || computed.height
-                            });
-                        }
-                        editorContainer.style.height = "calc(100vh - 50px)";
-                    }
-
-                    // Maximize monaco editor
-                    const monacoEditor = document.querySelector('.monaco-editor');
-                    if (monacoEditor) {
-                        if (!originalStates.has(monacoEditor)) {
-                            const computed = window.getComputedStyle(monacoEditor);
-                            originalStates.set(monacoEditor, {
-                                height: monacoEditor.style.height || computed.height
-                            });
-                        }
-                        monacoEditor.style.height = "calc(100vh - 70px)";
-                    }
-
-                    // Refresh layout
-                    setTimeout(function () {
-                        if (window.monaco && window.monaco.editor) {
-                            const editors = window.monaco.editor.getEditors();
-                            if (editors && editors.length) {
-                                editors.forEach(ed => ed.layout());
-                            }
-                        }
-                        window.dispatchEvent(new Event('resize'));
-                    }, 350);
-
-                    button.innerText = "RESTORE";
-                } else {
-                    // RESTORE LOGIC
-
-                    if (firstPanel && originalStates.has(firstPanel)) {
-                        const state = originalStates.get(firstPanel);
-                        firstPanel.style.display = state.display || "";
-
-                        if (!isActionView) {
-                            setTimeout(() => {
-                                // Restore explicit width if it was captured, otherwise empty string
-                                firstPanel.style.width = state.width;
-                            }, 10);
-                        } else {
-                            firstPanel.style.height = state.height;
-                            firstPanel.style.flex = state.flex;
-                        }
-                    }
-
-                    if (secondPanel && originalStates.has(secondPanel)) {
-                        const state = originalStates.get(secondPanel);
-                        secondPanel.style.width = state.width;
-                        secondPanel.style.display = state.display || "";
-                        secondPanel.style.height = state.height;
-                        secondPanel.style.flex = state.flex;
-                    }
-
-                    if (gutter) {
-                        gutter.style.display = "";
-                    }
-
-                    // Restore hidden elements
-                    elementsToToggle.forEach(el => {
-                        if (el && originalStates.has(el)) {
-                            const state = originalStates.get(el);
-                            // Restore to inline style if it existed, otherwise remove display property to revert to css
-                            el.style.display = state.display || "";
-                            el.style.height = state.height;
-                            el.style.overflow = state.overflow;
-                        }
-                    });
-
-                    // Restore editor container
-                    const editorContainer = document.querySelector('.editor-box');
-                    if (editorContainer && originalStates.has(editorContainer)) {
-                        editorContainer.style.height = originalStates.get(editorContainer).height;
-                    }
-
-                    // Restore monaco editor
-                    const monacoEditor = document.querySelector('.monaco-editor');
-                    if (monacoEditor && originalStates.has(monacoEditor)) {
-                        monacoEditor.style.height = originalStates.get(monacoEditor).height;
-                    }
-
-                    // Refresh layout
-                    setTimeout(function () {
-                        if (window.monaco && window.monaco.editor) {
-                            const editors = window.monaco.editor.getEditors();
-                            if (editors && editors.length) {
-                                editors.forEach(ed => ed.layout());
-                            }
-                        }
-                        window.dispatchEvent(new Event('resize'));
-                    }, 350);
-
-                    button.innerText = "MAXIMIZE";
                 }
-            } catch (err) {
-                console.error("Error in resize click handler:", err);
-                // Fallback to simpler state if error occurs
-                button.innerText = "ERROR - RELOAD";
-            }
-        });
-    }
 
-    function makeDraggable(element) {
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        let startX = 0, startY = 0;
-        const dragThreshold = 5; // Pixels to move before counting as a drag
-        let isDragging = false;
-
-        // Restore position from localStorage if available
-        const savedPos = localStorage.getItem('vro-resizer-btn-pos');
-        if (savedPos) {
-            try {
-                const pos = JSON.parse(savedPos);
-                // Ensure the saved position is within valid bounds (simple check)
-                if (pos.top && pos.left &&
-                    pos.top >= 0 && pos.left >= 0 &&
-                    pos.top < window.innerHeight && pos.left < window.innerWidth) {
-
-                    element.style.top = pos.top + "px";
-                    element.style.left = pos.left + "px";
-                    element.style.bottom = 'auto'; // Disable bottom/right relative positioning
-                    element.style.right = 'auto';
-                    element.style.position = 'fixed';
+                if (secondPanel && originalStates.has(secondPanel)) {
+                    const state = originalStates.get(secondPanel);
+                    secondPanel.style.width = state.width;
+                    secondPanel.style.display = state.display || "";
+                    secondPanel.style.height = state.height;
+                    secondPanel.style.flex = state.flex;
                 }
-            } catch (e) {
-                console.error("Error parsing saved button position", e);
-            }
+
+                if (gutter) {
+                    gutter.style.display = "";
+                }
+
+                // Restore hidden elements
+                elementsToToggle.forEach(el => {
+                    if (el && originalStates.has(el)) {
+                        const state = originalStates.get(el);
+                        // Restore to inline style if it existed, otherwise remove display property to revert to css
+                        el.style.display = state.display || "";
+                        el.style.height = state.height;
+                        el.style.overflow = state.overflow;
+                    }
+                });
+
+                // Restore editor container
+                if (editorContainer && originalStates.has(editorContainer)) {
+                    editorContainer.style.height = originalStates.get(editorContainer).height;
+                }
+
+                // Restore monaco editor
+                if (monacoEditor && originalStates.has(monacoEditor)) {
+                    monacoEditor.style.height = originalStates.get(monacoEditor).height;
+                }
+
+                refreshLayout();
+            };
         }
 
-        // Add window resize listener to ensure button stays visible
-        window.addEventListener('resize', function () {
-            const rect = element.getBoundingClientRect();
-            let newTop = rect.top;
-            let newLeft = rect.left;
-            let needsUpdate = false;
-
-            // Check if off-screen to the right
-            if (rect.right > window.innerWidth) {
-                newLeft = window.innerWidth - rect.width - 20; // 20px padding
-                needsUpdate = true;
-            }
-            // Check if off-screen to the bottom
-            if (rect.bottom > window.innerHeight) {
-                newTop = window.innerHeight - rect.height - 20; // 20px padding
-                needsUpdate = true;
-            }
-            // Check if off-screen to the left
-            if (rect.left < 0) {
-                newLeft = 20;
-                needsUpdate = true;
-            }
-            // Check if off-screen to the top
-            if (rect.top < 0) {
-                newTop = 20;
-                needsUpdate = true;
+        function setupResizeButton(editor) {
+            // Remove existing button if it exists
+            const existingBtn = document.getElementById(BUTTON_ID);
+            if (existingBtn) {
+                existingBtn.remove();
             }
 
-            if (needsUpdate) {
-                element.style.top = newTop + "px";
-                element.style.left = newLeft + "px";
+            // Create Floating Button
+            let button = document.createElement("button");
+            button.innerText = "MAXIMIZE";
+            button.id = BUTTON_ID;
+            button.type = "button";
 
-                // Update localStorage with normalized position
-                localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
-                    top: newTop,
-                    left: newLeft
-                }));
-            }
-        });
+            // FORCE styles inline to ensure they override Orchestrator defaults
+            button.style.backgroundColor = "#0072a3";
+            button.style.color = "#ffffff";
+            button.style.border = "1px solid #0072a3";
+            button.style.padding = "0 16px";
+            button.style.textTransform = "uppercase";
+            button.style.fontSize = "11px";
+            button.style.fontWeight = "600";
+            button.style.letterSpacing = "1px";
+            button.style.borderRadius = "3px";
+            button.style.height = "24px";
+            button.style.lineHeight = "22px";
+            button.style.cursor = "pointer";
+            button.style.zIndex = "999999";
+            button.style.boxShadow = "0 1px 2px rgba(0,0,0,0.15)";
 
-        element.onmousedown = dragMouseDown;
+            // Append directly to body to avoid container clipping/z-index issues
+            document.body.appendChild(button);
 
-        function dragMouseDown(e) {
-            console.log('Mouse down on resize button');
-            e = e || window.event;
-            // Only drag on left click
-            if (e.button !== 0) return;
+            // Initial Position (Bottom Right)
+            button.style.position = 'fixed';
+            button.style.bottom = '30px';
+            button.style.right = '30px';
+            button.style.left = 'auto';
+            button.style.top = 'auto';
 
-            e.preventDefault();
-            // get the mouse cursor position at startup:
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            startX = e.clientX;
-            startY = e.clientY;
-            isDragging = false; // Reset dragging state
+            // Make the button draggable
+            makeDraggable(button);
 
-            // Mark as not dragged initially
-            element.setAttribute('data-dragged', 'false');
+            button.addEventListener("click", function () {
+                // If the button was being dragged, don't trigger the click action
+                if (button.getAttribute('data-dragged') === 'true') {
+                    return;
+                }
 
-            document.onmouseup = closeDragElement;
-            // call a function whenever the cursor moves:
-            document.onmousemove = elementDrag;
+                try {
+                    if (activeRestore) {
+                        restoreIfMaximized();
+                        button.innerText = "MAXIMIZE";
+                    } else {
+                        // Detect the layout at click time: it can change while the editor stays open
+                        activeRestore = detectVROVersion() === 'vcf9' ? maximizeVcf9(editor) : maximizeLegacy();
+                        button.innerText = "RESTORE";
+                    }
+                } catch (err) {
+                    console.error(LOG, "Error in resize click handler:", err);
+                    // Fallback to simpler state if error occurs
+                    button.innerText = "ERROR - RELOAD";
+                }
+            });
         }
 
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            let startX = 0, startY = 0;
+            const dragThreshold = 5; // Pixels to move before counting as a drag
+            let isDragging = false;
 
-            // Calculate distance moved from start
-            const distSq = (e.clientX - startX) ** 2 + (e.clientY - startY) ** 2;
+            // Restore position from localStorage if available
+            const savedPos = localStorage.getItem('vro-resizer-btn-pos');
+            if (savedPos) {
+                try {
+                    const pos = JSON.parse(savedPos);
+                    // Ensure the saved position is within valid bounds (simple check)
+                    if (pos.top && pos.left &&
+                        pos.top >= 0 && pos.left >= 0 &&
+                        pos.top < window.innerHeight && pos.left < window.innerWidth) {
 
-            // Only start dragging if moved more than threshold
-            if (!isDragging && distSq > dragThreshold ** 2) {
-                isDragging = true;
-                console.log('Drag threshold exceeded - starting drag');
+                        element.style.top = pos.top + "px";
+                        element.style.left = pos.left + "px";
+                        element.style.bottom = 'auto'; // Disable bottom/right relative positioning
+                        element.style.right = 'auto';
+                        element.style.position = 'fixed';
+                    }
+                } catch (e) {
+                    console.error("Error parsing saved button position", e);
+                }
+            }
 
-                // Calculate current position to switch from bottom/right to top/left (only once when drag starts)
+            // Add window resize listener to ensure button stays visible
+            window.addEventListener('resize', function () {
                 const rect = element.getBoundingClientRect();
-                element.style.left = rect.left + 'px';
-                element.style.top = rect.top + 'px';
-                element.style.bottom = 'auto';
-                element.style.right = 'auto';
-                element.style.position = 'fixed'; // Ensure it stays fixed
+                let newTop = rect.top;
+                let newLeft = rect.left;
+                let needsUpdate = false;
 
-                // Disable transition and increase opacity during drag
-                element.style.transition = 'none';
-                element.style.opacity = '0.9';
+                // Check if off-screen to the right
+                if (rect.right > window.innerWidth) {
+                    newLeft = window.innerWidth - rect.width - 20; // 20px padding
+                    needsUpdate = true;
+                }
+                // Check if off-screen to the bottom
+                if (rect.bottom > window.innerHeight) {
+                    newTop = window.innerHeight - rect.height - 20; // 20px padding
+                    needsUpdate = true;
+                }
+                // Check if off-screen to the left
+                if (rect.left < 0) {
+                    newLeft = 20;
+                    needsUpdate = true;
+                }
+                // Check if off-screen to the top
+                if (rect.top < 0) {
+                    newTop = 20;
+                    needsUpdate = true;
+                }
 
-                // Mark as dragged
-                element.setAttribute('data-dragged', 'true');
-            }
+                if (needsUpdate) {
+                    element.style.top = newTop + "px";
+                    element.style.left = newLeft + "px";
 
-            if (isDragging) {
-                // calculate the new cursor position:
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
+                    // Update localStorage with normalized position
+                    localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
+                        top: newTop,
+                        left: newLeft
+                    }));
+                }
+            });
+
+            element.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                                e = e || window.event;
+                // Only drag on left click
+                if (e.button !== 0) return;
+
+                e.preventDefault();
+                // get the mouse cursor position at startup:
                 pos3 = e.clientX;
                 pos4 = e.clientY;
+                startX = e.clientX;
+                startY = e.clientY;
+                isDragging = false; // Reset dragging state
 
-                // set the element's new position:
-                element.style.top = (element.offsetTop - pos2) + "px";
-                element.style.left = (element.offsetLeft - pos1) + "px";
-            }
-        }
+                // Mark as not dragged initially
+                element.setAttribute('data-dragged', 'false');
 
-        function closeDragElement() {
-            // stop moving when mouse button is released:
-            document.onmouseup = null;
-            document.onmousemove = null;
-
-            console.log(`Mouse up - Drag state: ${element.getAttribute('data-dragged')}`);
-
-            if (isDragging) {
-                // Restore styles only if we were actually dragging
-                element.style.transition = 'background-color 0.3s, opacity 0.3s';
-                element.style.opacity = ''; // Revert to CSS default (0.4 or 1 on hover)
-
-                // Save new position to localStorage
-                const rect = element.getBoundingClientRect();
-                localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
-                    top: rect.top,
-                    left: rect.left
-                }));
+                document.onmouseup = closeDragElement;
+                // call a function whenever the cursor moves:
+                document.onmousemove = elementDrag;
             }
 
-            isDragging = false;
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+
+                // Calculate distance moved from start
+                const distSq = (e.clientX - startX) ** 2 + (e.clientY - startY) ** 2;
+
+                // Only start dragging if moved more than threshold
+                if (!isDragging && distSq > dragThreshold ** 2) {
+                    isDragging = true;
+                    
+                    // Calculate current position to switch from bottom/right to top/left (only once when drag starts)
+                    const rect = element.getBoundingClientRect();
+                    element.style.left = rect.left + 'px';
+                    element.style.top = rect.top + 'px';
+                    element.style.bottom = 'auto';
+                    element.style.right = 'auto';
+                    element.style.position = 'fixed'; // Ensure it stays fixed
+
+                    // Disable transition and increase opacity during drag
+                    element.style.transition = 'none';
+                    element.style.opacity = '0.9';
+
+                    // Mark as dragged
+                    element.setAttribute('data-dragged', 'true');
+                }
+
+                if (isDragging) {
+                    // calculate the new cursor position:
+                    pos1 = pos3 - e.clientX;
+                    pos2 = pos4 - e.clientY;
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+
+                    // set the element's new position:
+                    element.style.top = (element.offsetTop - pos2) + "px";
+                    element.style.left = (element.offsetLeft - pos1) + "px";
+                }
+            }
+
+            function closeDragElement() {
+                // stop moving when mouse button is released:
+                document.onmouseup = null;
+                document.onmousemove = null;
+
+                if (isDragging) {
+                    // Restore styles only if we were actually dragging
+                    element.style.transition = 'background-color 0.3s, opacity 0.3s';
+                    element.style.opacity = ''; // Revert to CSS default (0.4 or 1 on hover)
+
+                    // Save new position to localStorage
+                    const rect = element.getBoundingClientRect();
+                    localStorage.setItem('vro-resizer-btn-pos', JSON.stringify({
+                        top: rect.top,
+                        left: rect.left
+                    }));
+                }
+
+                isDragging = false;
+            }
         }
     }
-});
+})();

@@ -14,6 +14,14 @@ https://github.com/user-attachments/assets/c86cf157-8974-4e4f-b1fa-da9b302534db
 
 ![icon](https://github.com/user-attachments/assets/6869f886-90ca-474d-aeb3-3206f7b5ff32) https://chromewebstore.google.com/detail/vro-code-editor-resizer/gbgologffcmhapnjimcpipiljeaadgpf
 
+## What's New in v2.1.0
+- **VCF Operations Orchestrator 9.x support (tested on 9.1.1)**: in 9.x the Orchestrator client runs inside an iframe of VCF Automation, so the button never appeared. The extension now runs inside that frame.
+- **Actions in 9.x**: MAXIMIZE now hides the API Explorer / Properties pane, so the script editor uses the full width.
+- **Cleaner restore**: leaving the editor while maximized (tab switch, navigation) puts the layout back automatically.
+- **Orchestrator only**: the button no longer shows up on other websites that use a Monaco editor.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full history.
+
 ## � What's New in v2.0.0
 - **New UI**: Updated button design to match Clarity Design System (Metropolis font, standard colors).
 - **Smart Restore**: Now restores the exact pixel dimensions of your editor and sidebars, preventing layout collapse.
