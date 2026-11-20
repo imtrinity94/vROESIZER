@@ -2,6 +2,16 @@
 
 All notable changes to vROESIZER (vRO Code Editor Resizer) are listed here, newest first.
 
+## 2.1.1 - 2026-11-20
+
+### Fixed
+- **Chrome Web Store review (excessive permissions).** Removed the unused `activeTab` permission and the unused `host_permissions` entry. The extension now requests no permissions at all.
+
+### Changed
+- The content script is injected only on the Orchestrator client path (`/orchestration-ui`), which is the same in 8.x and 9.x, instead of on every website.
+- 8.x safety net: if the 9.x strategy finds no split panes around the editor, MAXIMIZE falls back to the 8.x (legacy) strategy instead of doing nothing.
+- Popup text now refers to the MAXIMIZE button.
+
 ## 2.1.0 - 2026-11-20
 
 Tested on VCF Operations Orchestrator 9.1.1 (build 25643527), embedded in VCF Automation.

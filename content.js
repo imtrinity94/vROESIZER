@@ -21,10 +21,12 @@
     const FILL_WIDTH_CLASS = 'vroesizer-fill-width';
     const FILL_HEIGHT_CLASS = 'vroesizer-fill-height';
 
-    // Only run in the Orchestrator client, not on every page that has a Monaco editor
+    // Only run in the Orchestrator client. manifest.json already limits injection to
+    // /orchestration-ui (the client path in both 8.x and 9.x); this is a second check.
     function isOrchestratorPage() {
         return /\/orchestration-ui(\/|$)/.test(window.location.pathname) ||
-            !!document.querySelector('o11n-app');
+            !!document.querySelector('o11n-app') ||
+            /orchestrator/i.test(document.title);
     }
 
     if (document.readyState === 'complete') {
@@ -200,6 +202,12 @@
                     });
                 }
                 node = parent;
+            }
+
+            // No split-layout pane found around the editor (older or unexpected layout):
+            // tell the caller so it can fall back to the legacy strategy.
+            if (touched.length === 0) {
+                return null;
             }
 
             // Extra chrome around the editor that only costs vertical space
@@ -444,7 +452,12 @@
                         button.innerText = "MAXIMIZE";
                     } else {
                         // Detect the layout at click time: it can change while the editor stays open
-                        activeRestore = detectVROVersion() === 'vcf9' ? maximizeVcf9(editor) : maximizeLegacy();
+                        let restore = detectVROVersion() === 'vcf9' ? maximizeVcf9(editor) : null;
+                        if (!restore) {
+                            // 8.x client, or a layout the structural strategy does not recognise
+                            restore = maximizeLegacy();
+                        }
+                        activeRestore = restore;
                         button.innerText = "RESTORE";
                     }
                 } catch (err) {
